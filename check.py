@@ -15,6 +15,7 @@ BOOKING_URL = "https://www.demir-psychotherapie.de/terminbuchung"
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 INTERVAL = int(os.environ.get("INTERVAL", "900"))
 MONTHS = int(os.environ.get("MONTHS", "12"))
+STALE_AFTER = int(os.environ.get("STALE_AFTER", "900"))
 
 
 def months_ahead(start, n):
@@ -45,12 +46,8 @@ def available_dates():
     return found
 
 
-def notify(dates):
-    body = json.dumps({
-        "content": "@everyone **ADHD assessment: appointment available!**\n"
-                   + "\n".join(f"- {d}" for d in sorted(dates))
-                   + f"\nBook here: {BOOKING_URL}"
-    }).encode()
+def post(content):
+    body = json.dumps({"content": content}).encode()
     req = urllib.request.Request(WEBHOOK, data=body, headers={
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0",
@@ -58,12 +55,49 @@ def notify(dates):
     urllib.request.urlopen(req, timeout=30).read()
 
 
+def notify(dates):
+    post("@everyone **ADHD assessment: appointment available!**\n"
+         + "\n".join(f"- {d}" for d in sorted(dates))
+         + f"\nBook here: {BOOKING_URL}")
+
+
+def log(msg):
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}", flush=True)
+
+
+def main():
+    seen = set()
+    last_ok = time.time()
+    stale = False
+    while True:
+        try:
+            found = available_dates()
+            last_ok = time.time()
+            new = found - seen
+            log(f"available={len(found)} new={len(new)}")
+            if new:
+                notify(new)
+            seen = found
+            if stale:
+                stale = False
+                post(":white_check_mark: Checks are working again.")
+        except Exception as e:
+            log(f"error: {e}")
+            if not stale and time.time() - last_ok > STALE_AFTER:
+                stale = True
+                try:
+                    post(f"@everyone :warning: **Appointment checker is failing.**\n"
+                         f"No successful check for {STALE_AFTER // 60} min. "
+                         f"Latest error: `{e}`")
+                except Exception as post_error:
+                    log(f"could not report failure: {post_error}")
+        time.sleep(INTERVAL)
+
+
 def selftest():
     ms = list(months_ahead(date(2026, 11, 1), 4))
     assert ms == [date(2026, 11, 1), date(2026, 12, 1), date(2027, 1, 1), date(2027, 2, 1)], ms
-    seen = {"2027-01-05"}
-    found = {"2027-01-05", "2027-02-09"}
-    assert found - seen == {"2027-02-09"}
+    assert {"2027-01-05", "2027-02-09"} - {"2027-01-05"} == {"2027-02-09"}
     print("ok")
 
 
@@ -73,15 +107,4 @@ if __name__ == "__main__":
         sys.exit()
     if not WEBHOOK:
         sys.exit("DISCORD_WEBHOOK not set")
-    seen = set()
-    while True:
-        try:
-            found = available_dates()
-            new = found - seen
-            seen = found
-            print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} available={len(found)} new={len(new)}", flush=True)
-            if new:
-                notify(new)
-        except Exception as e:
-            print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} error: {e}", flush=True)
-        time.sleep(INTERVAL)
+    main()
