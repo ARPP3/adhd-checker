@@ -1,0 +1,6 @@
+services:
+  david-app:
+    build: .
+    container_name: david-app
+    restart: unless-stopped
+    env_file: .env
