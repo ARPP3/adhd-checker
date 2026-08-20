@@ -47,9 +47,9 @@ def available_dates():
 
 def notify(dates):
     body = json.dumps({
-        "content": "@everyone **ADHS-Diagnostik: Termin frei!**\n"
+        "content": "@everyone **ADHD assessment: appointment available!**\n"
                    + "\n".join(f"- {d}" for d in sorted(dates))
-                   + f"\n{BOOKING_URL}"
+                   + f"\nBook here: {BOOKING_URL}"
     }).encode()
     req = urllib.request.Request(WEBHOOK, data=body, headers={
         "Content-Type": "application/json",
