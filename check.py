@@ -51,7 +51,10 @@ def notify(dates):
                    + "\n".join(f"- {d}" for d in sorted(dates))
                    + f"\n{BOOKING_URL}"
     }).encode()
-    req = urllib.request.Request(WEBHOOK, data=body, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(WEBHOOK, data=body, headers={
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+    })
     urllib.request.urlopen(req, timeout=30).read()
 
 
