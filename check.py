@@ -47,7 +47,7 @@ def available_dates():
 
 def notify(dates):
     body = json.dumps({
-        "content": "@here **ADHS-Diagnostik: Termin frei!**\n"
+        "content": "@everyone **ADHS-Diagnostik: Termin frei!**\n"
                    + "\n".join(f"- {d}" for d in sorted(dates))
                    + f"\n{BOOKING_URL}"
     }).encode()
